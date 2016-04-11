@@ -8,7 +8,7 @@ class primeObject:
 		self.evalNumber = evalNumber
 		self.isPrime = isPrime
 
-def calcPrimeErastos(numProcs, calcRange, endTime):
+def calcPrimesErastos(numProcs, calcRange, endTime, i, q):
 	print ("Calcing primes with ancient method.  Yeay Greeks!")
 	# This is a place holder initializer until I setup the multiple threads.
 	# At this time each individual thread will have a number which I will 
@@ -16,73 +16,110 @@ def calcPrimeErastos(numProcs, calcRange, endTime):
 
 	# This index is to help me keep track of which index I am adding which prime to
 	# Essentially all it is is a glorified counter for my lists. 
-	evalNumber = (0 * calcRange) + 1	#Used to put the numbers into the lists for record keeping. Will be replaced.
-	evalIndex = 0	#Will be used in the loops to ensure I have not gone beyond the list extents.
-	startIndex = 0		#0 * calcRange
-	listLength = int(calcRange / 2)
-	endIndex = startIndex + calcRange
-	primeList = []
-	divisor = 3
+	evalNumber = (i * calcRange) + 1	#Used to put the numbers into the lists for record keeping. Will be replaced.
+	#Will be used in the loops to ensure I have not gone beyond the list extents.
+		#0 * calcRange
+	listLength = 0
 	highestCurNum = 0
 	curPossiblePrime = 0
 
 	# outermost while loop of evaluation will start here
-	# Append to the list as needed.  Move the initialization loops into this outer while loop.
-
-	print ("Start number: " + str(startIndex))
-	print ("End number: " + str(endIndex))
-
-	if evalNumber == 1:
-		for i in range(startIndex, endIndex):
-			if evalNumber == 1:
-				primeList.append(primeObject(evalNumber, True))
-				primeList.append(primeObject(2, True))
-				evalNumber += 2			
-			primeList.append(primeObject(evalNumber, True))	
-			evalNumber += 2
-	else:
-		for i in range(startIndex, endIndex):			
-			primeList.append(primeObject(evalNumber, True))	
-			evalNumber += 2
-	
-	if primeList[0].evalNumber < 3:
-		print ("Prime found: " + str(1))
-		print ("Prime found: " + str(2))
-	
-	highestCurNum = primeList[listLength - 1].evalNumber
-	print ("highestCurNum: " + str(highestCurNum))
-	print ("listLength: " + str(listLength))
-
-	while divisor < highestCurNum:
-		while evalIndex < listLength:
-			curPossiblePrime = int(primeList[evalIndex].evalNumber)
-			if (curPossiblePrime / divisor) > 1 and (curPossiblePrime % divisor) == 0 \
-			and (curPossiblePrime != divisor):
-				primeList[evalIndex].isPrime = False
-			evalIndex += 1
+	# Append to the list as needed.  Move the initialization loops into this outer while loop.	
+	while time.time() < endTime:
+		primeList = []
+		divisor = 3
+		startIndex = 0
+		endIndex = startIndex + int(calcRange / 2)
 		evalIndex = 0
-		divisor += 2
+		print ("Start Index: " + str(startIndex))
+		print ("End Index: " + str(endIndex))
 
-	print ("highestCurNum: " + str(highestCurNum))
-	
-	# highestCurNum += (numProcs * calcRange) - 96 Not sure if this is needed.
-	print ("highestCurNum: " + str(highestCurNum))
-	# End outermost while loop.
+		if evalNumber == 1:
+			for i in range(startIndex, endIndex - 1):
+				if evalNumber == 1:
+					primeList.append(primeObject(evalNumber, True))
+					primeList.append(primeObject(2, True))
+					evalNumber += 2			
+				primeList.append(primeObject(evalNumber, True))	
+				evalNumber += 2
+		else:
+			for i in range(startIndex, endIndex):			
+				primeList.append(primeObject(evalNumber, True))	
+				evalNumber += 2
+		
+		if primeList[0].evalNumber < 3:
+			print ("Prime found: " + str(1))
+			print ("Prime found: " + str(2))
+		
+		listLength = len(primeList)
 
-	for i in range(startIndex, listLength):
-		print ("Index: " + str(i) + " evalNumber: " + str(primeList[i].evalNumber) \
-			+ " isPrime: " + str(primeList[i].isPrime))
+		highestCurNum = primeList[listLength - 1].evalNumber
+		print ("highestCurNum: " + str(highestCurNum))
+		print ("listLength: " + str(listLength))
+
+		while divisor < highestCurNum:
+			while evalIndex < listLength:
+				curPossiblePrime = int(primeList[evalIndex].evalNumber)
+				if (curPossiblePrime / divisor) > 1 and (curPossiblePrime % divisor) == 0 \
+				and (curPossiblePrime != divisor):
+					primeList[evalIndex].isPrime = False
+				evalIndex += 1
+			evalIndex = 0
+			divisor += 2
+
+		highestCurNum += (numProcs * calcRange) - calcRange
+		evalNumber += (numProcs * calcRange) - calcRange
+
+		if time.time() < endTime:
+			for i in range(startIndex, listLength):
+				print ("Index: " + str(i) + " evalNumber: " + str(primeList[i].evalNumber) \
+					+ " isPrime: " + str(primeList[i].isPrime))
+
+			print ("highestCurNum: " + str(highestCurNum))
+			print ("numProcs: " + str(numProcs))
+			# Refer list iterator
+			r = listLength - 1
+			while primeList[r].isPrime == False:
+				r -= 1
+			q.put(primeList[r].evalNumber)
+
+			print ("The highest prime this list is: " + str(primeList[r].evalNumber))
+			print ("highestCurNum: " + str(highestCurNum))
+			print ("evalNumber: " + str(evalNumber))
+			print ("time: " + (str(time.time())))
+		# End outermost while loop.
+
 
 def main(args):
 	print("The first line in my program.")
 	runTime = float(args[2])
 	calcRange = int(args[1])
+	
+	# Initializing the timer as soon as possible.  Must first grab args.
+	endTime = time.time() + runTime
 
 	numProcs = mp.cpu_count()
 	timeLeft = runTime
-	endTime = time.time() + runTime
+	highestPrimeList = []
 
-	calcPrimeErastos(numProcs, calcRange, endTime)
+	q = Queue()
+
+	for i in range(0, numProcs):
+		p = Process(target = calcPrimesErastos, args = (numProcs, calcRange, endTime, i, q))
+		p.start()
+
+	while timeLeft > 0:
+		print ()
+		print ("There are: " + str(timeLeft) + " seconds left to find a higher prime.")
+		print ()
+		time.sleep(1)
+		timeLeft -= 1
+
+	while not q.empty():
+		highestPrimeList.append(q.get())
+
+	print (highestPrimeList)
+
 
 if __name__ == '__main__':
 	main(sys.argv)
